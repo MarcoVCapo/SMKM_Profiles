@@ -1,0 +1,36 @@
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   305                                           def HKM(D,k,inito):
+   306         1            2      2.0      0.0      n=D.shape[0];d=D.shape[1]
+   307         1            1      1.0      0.0      STOP=False       
+   308        61           53      0.9      0.0      while STOP==False:
+   309                                                   ######################################################################
+   310                                                   ### Lloyd's algorithm run
+   311                                                   ############################# ######################################## 
+   312                                                   
+   313        60          614     10.2      0.1          k_means = KMeans(init=inito, n_clusters=k,n_init=1)    
+   314        60       518126   8635.4     55.0          k_means.fit(D);
+   315        60          100      1.7      0.0          inito = k_means.cluster_centers_;
+   316        60          292      4.9      0.0          lU=np.zeros(k);lU2=np.zeros(k)
+   317      3060        12522      4.1      1.3          for i in range(k):a=len(np.where(k_means.labels_==i)[0]);lU2[i]=a/(a-1.0);lU[i]=a/(a+1.0);
+   318                                           
+   319                                                   ######################################################################
+   320                                                   ### Hartigan's heuristic
+   321                                                   ######################################################################
+   322                                           
+   323        60       246376   4106.3     26.1          Ds=cdist(D, inito, 'sqeuclidean') 
+   324        60         4401     73.3      0.5          Ds2= np.multiply(Ds,lU)           
+   325     60060        62419      1.0      6.6          for i in range(n):Ds2[i][k_means.labels_[i]]=float('nan');        
+   326     60060        78041      1.3      8.3          Ds3=np.array([lU2[k_means.labels_[i]]*Ds[i][k_means.labels_[i]] for i in range(n)])        
+   327        60         7667    127.8      0.8          phi=Ds3-np.nanmin(Ds2,axis=1)
+   328                                                   
+   329        60         4321     72.0      0.5          if max(phi)>=0:
+   330        59          500      8.5      0.1              t=np.argmax(phi)
+   331        59           74      1.3      0.0              jk=k_means.labels_[t]
+   332        59         2145     36.4      0.2              j=np.nanargmin(Ds2[t])
+   333        59          122      2.1      0.0              k_means.labels_[t]=j
+   334        59         2946     49.9      0.3              inito[j]=np.mean(D[np.where(k_means.labels_==j)[0]],axis=0)
+   335        59         1860     31.5      0.2              inito[jk]=np.mean(D[np.where(k_means.labels_==jk)[0]],axis=0) 
+   336                                                   else:
+   337         1            1      1.0      0.0              STOP=True  
+   338         1            1      1.0      0.0      return 

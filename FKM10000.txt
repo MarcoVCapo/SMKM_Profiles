@@ -1,0 +1,124 @@
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   404                                           def _kmeans_single_lloyd(X, n_clusters, max_iter=300, init='k-means++',
+   405                                                                    verbose=False, x_squared_norms=None,
+   406                                                                    random_state=None, tol=1e-4,
+   407                                                                    precompute_distances=True):
+   408                                               """A single run of k-means, assumes preparation completed prior.
+   409                                           
+   410                                               Parameters
+   411                                               ----------
+   412                                               X : array-like of floats, shape (n_samples, n_features)
+   413                                                   The observations to cluster.
+   414                                           
+   415                                               n_clusters : int
+   416                                                   The number of clusters to form as well as the number of
+   417                                                   centroids to generate.
+   418                                           
+   419                                               max_iter : int, optional, default 300
+   420                                                   Maximum number of iterations of the k-means algorithm to run.
+   421                                           
+   422                                               init : {'k-means++', 'random', or ndarray, or a callable}, optional
+   423                                                   Method for initialization, default to 'k-means++':
+   424                                           
+   425                                                   'k-means++' : selects initial cluster centers for k-mean
+   426                                                   clustering in a smart way to speed up convergence. See section
+   427                                                   Notes in k_init for more details.
+   428                                           
+   429                                                   'random': generate k centroids from a Gaussian with mean and
+   430                                                   variance estimated from the data.
+   431                                           
+   432                                                   If an ndarray is passed, it should be of shape (k, p) and gives
+   433                                                   the initial centers.
+   434                                           
+   435                                                   If a callable is passed, it should take arguments X, k and
+   436                                                   and a random state and return an initialization.
+   437                                           
+   438                                               tol : float, optional
+   439                                                   The relative increment in the results before declaring convergence.
+   440                                           
+   441                                               verbose : boolean, optional
+   442                                                   Verbosity mode
+   443                                           
+   444                                               x_squared_norms : array
+   445                                                   Precomputed x_squared_norms.
+   446                                           
+   447                                               precompute_distances : boolean, default: True
+   448                                                   Precompute distances (faster but takes more memory).
+   449                                           
+   450                                               random_state : int, RandomState instance or None, optional, default: None
+   451                                                   If int, random_state is the seed used by the random number generator;
+   452                                                   If RandomState instance, random_state is the random number generator;
+   453                                                   If None, the random number generator is the RandomState instance used
+   454                                                   by `np.random`.
+   455                                           
+   456                                               Returns
+   457                                               -------
+   458                                               centroid : float ndarray with shape (k, n_features)
+   459                                                   Centroids found at the last iteration of k-means.
+   460                                           
+   461                                               label : integer ndarray with shape (n_samples,)
+   462                                                   label[i] is the code or index of the centroid the
+   463                                                   i'th observation is closest to.
+   464                                           
+   465                                               inertia : float
+   466                                                   The final value of the inertia criterion (sum of squared distances to
+   467                                                   the closest centroid for all observations in the training set).
+   468                                           
+   469                                               n_iter : int
+   470                                                   Number of iterations run.
+   471                                               """
+   472         1            5      5.0      0.0      random_state = check_random_state(random_state)
+   473                                           
+   474         1            0      0.0      0.0      best_labels, best_inertia, best_centers = None, None, None
+   475                                               # init
+   476         1            1      1.0      0.0      centers = _init_centroids(X, n_clusters, init, random_state=random_state,
+   477         1          824    824.0      0.8                                x_squared_norms=x_squared_norms)
+   478         1            1      1.0      0.0      if verbose:
+   479                                                   print("Initialization complete")
+   480                                           
+   481                                               # Allocate memory to store the distances for each sample to its
+   482                                               # closer center for reallocation in case of ties
+   483         1            6      6.0      0.0      distances = np.zeros(shape=(X.shape[0],), dtype=X.dtype)
+   484                                           
+   485                                               # iterations
+   486        13           21      1.6      0.0      for i in range(max_iter):
+   487        13           63      4.8      0.1          centers_old = centers.copy()
+   488                                                   # labels assignment is also called the E-step of EM
+   489                                                   labels, inertia = \
+   490        13           14      1.1      0.0              _labels_inertia(X, x_squared_norms, centers,
+   491        13            9      0.7      0.0                              precompute_distances=precompute_distances,
+   492        13        91275   7021.2     85.5                              distances=distances)
+   493                                           
+   494                                                   # computation of the means is also called the M-step of EM
+   495        13           58      4.5      0.1          if sp.issparse(X):
+   496                                                       centers = _k_means._centers_sparse(X, labels, n_clusters,
+   497                                                                                          distances)
+   498                                                   else:
+   499        13        13687   1052.8     12.8              centers = _k_means._centers_dense(X, labels, n_clusters, distances)
+   500                                           
+   501        13           16      1.2      0.0          if verbose:
+   502                                                       print("Iteration %2d, inertia %.3f" % (i, inertia))
+   503                                           
+   504        13           29      2.2      0.0          if best_inertia is None or inertia < best_inertia:
+   505        13           87      6.7      0.1              best_labels = labels.copy()
+   506        13           61      4.7      0.1              best_centers = centers.copy()
+   507        13           12      0.9      0.0              best_inertia = inertia
+   508                                           
+   509        13          532     40.9      0.5          center_shift_total = squared_norm(centers_old - centers)
+   510        13           21      1.6      0.0          if center_shift_total <= tol:
+   511         1            1      1.0      0.0              if verbose:
+   512                                                           print("Converged at iteration %d: "
+   513                                                                 "center shift %e within tolerance %e"
+   514                                                                 % (i, center_shift_total, tol))
+   515         1            3      3.0      0.0              break
+   516                                           
+   517         1            2      2.0      0.0      if center_shift_total > 0:
+   518                                                   # rerun E-step in case of non-convergence so that predicted labels
+   519                                                   # match cluster centers
+   520                                                   best_labels, best_inertia = \
+   521                                                       _labels_inertia(X, x_squared_norms, best_centers,
+   522                                                                       precompute_distances=precompute_distances,
+   523                                                                       distances=distances)
+   524                                           
+   525         1            1      1.0      0.0      return best_labels, best_inertia, best_centers, i + 1

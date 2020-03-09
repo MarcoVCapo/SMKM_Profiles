@@ -1,0 +1,64 @@
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   242                                           def SMKM(D,k,inito,maxiter=10):   
+   243         1            1      1.0      0.0      n=D.shape[0];d=D.shape[1]
+   244         1            1      1.0      0.0      i=0;STOP=False;
+   245        12            7      0.6      0.0      while i<=maxiter:
+   246                                                   ######################################################################
+   247                                                   ### Lloyd's algorithm run
+   248                                                   ############################# ######################################## 
+   249                                                         
+   250        11          121     11.0      0.0          k_means = KMeans(init=inito, n_clusters=k,n_init=1)        
+   251        11        92120   8374.5     10.8          k_means.fit(D);     
+   252        11           18      1.6      0.0          inito = k_means.cluster_centers_;
+   253                                                   
+   254                                                   ######################################################################
+   255                                                   ### Re-initialization step
+   256                                                   ######################################################################
+   257                                                   
+   258                                                   # *********** SplitStep *************
+   259                                                    
+   260        11           49      4.5      0.0          Desc=np.zeros(k);
+   261       561         2554      4.6      0.3          U=np.array([np.where(k_means.labels_==j) for j in range(k)])
+   262       561        32793     58.5      3.9          f=np.array([sum(cdist(D[U[j][0]],inito[j].reshape(1,-1),'sqeuclidean')) for j in range(k)])             
+   263       561         2062      3.7      0.2          lU=np.array([len(np.where(k_means.labels_==j)[0]) for j in range(k)])
+   264       561         1598      2.8      0.2          CC=np.array([np.array([inito[0],inito[0]]) for iI in range(k)])
+   265        11           42      3.8      0.0          l0C=np.zeros(k);l1C=np.zeros(k)
+   266                                                   
+   267       561          481      0.9      0.1          for j in range(k):
+   268       550         4372      7.9      0.5              X=D[U[j][0]];
+   269                                                       
+   270       550          555      1.0      0.1              if len(X)>1:
+   271                                           
+   272       543         3936      7.2      0.5                  k_meansINT = KMeans(init='k-means++', n_clusters=2, n_init=1)
+   273       543       641423   1181.3     75.5                  k_meansINT.fit(X);
+   274                                                           
+   275       543         3805      7.0      0.4                  CC[j]=np.array([k_meansINT.cluster_centers_[0],k_meansINT.cluster_centers_[1]])
+   276       543         3395      6.3      0.4                  l0C[j]=len(np.where(k_meansINT.labels_==0)[0])
+   277       543         1777      3.3      0.2                  l1C[j]=len(np.where(k_meansINT.labels_==1)[0])
+   278       543         2519      4.6      0.3                  Desc[j]=k_meansINT.inertia_-f[j]
+   279                                                       
+   280                                                       else:
+   281         7            6      0.9      0.0                  Desc[j]=0   
+   282                                                                        
+   283        11           66      6.0      0.0          kk=np.argmin(Desc)
+   284        11          434     39.5      0.1          inito=np.delete(inito,kk,0)
+   285        11          269     24.5      0.0          lU=np.delete(lU,kk,0)            
+   286        11          329     29.9      0.0          inito=np.vstack((inito,CC[kk][0]));inito=np.vstack((inito,CC[kk][1]))
+   287        11          314     28.5      0.0          lU=np.hstack((lU,l0C[kk]));lU=np.hstack((lU,l1C[kk]))
+   288                                                   
+   289                                                   # *********** MergeStep *************       
+   290                                                   
+   291        11         3159    287.2      0.4          Z = cdist(inito,inito,'sqeuclidean');
+   292        11          252     22.9      0.0          Z0=copy.deepcopy(Z)            
+   293       561          354      0.6      0.0          for j in range(k):
+   294     15125        10389      0.7      1.2              for m in range(j,k+1):
+   295     14575        17465      1.2      2.1                  t=(lU[j]*lU[m])/(lU[j]+lU[m])
+   296     14575        21366      1.5      2.5                  Z0[j][m]=Z[j][m]*t;Z0[m][j]=0;  
+   297        11           13      1.2      0.0          Z0[k-1][k]=0          
+   298        11          911     82.8      0.1          ind=np.where(Z0==np.min(Z0[np.nonzero(Z0)]));
+   299        11           22      2.0      0.0          j=ind[0][0];m=ind[1][0]
+   300        11          149     13.5      0.0          inito[j]=(lU[j]*inito[j]+lU[m]*inito[m])/(lU[j]+lU[m]) 
+   301        11          440     40.0      0.1          inito=np.delete(inito,m,0)
+   302        11           11      1.0      0.0          i+=1
+   303         1            0      0.0      0.0      return 
